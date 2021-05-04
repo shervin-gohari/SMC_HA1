@@ -46,17 +46,20 @@ for k = 1:n
    P1 = phi * part;
    P2 = repmat(psi_z*Z(:,sim_Z(k)),1,N);
    P3 = psi_w*mvnrnd([0;0],diag([0.25;0.25],0),N)';
-   w =  y_pdf(part,Y(:,k+1)').*w;
-   w = w / sum(w);
+   %w = w / sum(w);
 
     
    part = P1 + P2 + P3;
-    
   
    % Evaluating the expectations 
+   
+   w =  y_pdf(part,Y(:,k+1)').*w;
+
    tau(1,k+1) = sum(part(1,:).*w')/sum(w);
    tau(2,k+1) = sum(part(4,:).*w')/sum(w);
    W_store(:,k+1) = w;
+   
+
 end 
 %% Vizualization & Presentation
 
@@ -68,12 +71,6 @@ xlabel('X_1')
 ylabel('X_2')
 grid on
 title('Simulated trajectory with SIS')
-
-% figure(2)
-% for i = 1:100
-%     histogram(W_store(:,i));
-%     pause(0.1);
-% end 
 
 % Plotting different histograms for report
 
@@ -90,6 +87,25 @@ figure(4)
 histogram(W_store(:,200))
 title('Distribution of importance weights for n = 200')
 
+%% Calculating and vizualzing the sampling efficiency
+n = 500;
+N = 10000;
+sampleN = zeros(1,n);
+sample_size = 0;
+dummy = Inf;
+for i = 1:n
+    CV2 = (1/N)*sum((N*(W_store(:,i)./sum(W_store(:,i)))-1).^2);
+    sampleN(i) = N/(1+CV2);
+    if sampleN(i)<dummy
+        dummy = sampleN(i);
+        sample_size = i;       
+    end
+end
+figure(1000)
+plot(sampleN,'b-','LineWidth',1.5)
+title('Effective Sample Size')
+xlabel('n')
+ylabel('Effective sample size')
 %% Vizualization with subplots
 subplot(4,1,1)
 histogram(W_store(:,1))
@@ -116,3 +132,15 @@ function distance = DIST(l,x, pos_vec)
         distance = dist_store';
     end
 end
+
+function n_eff = ESS(w)
+    [N, n] = size(w);
+    n_eff = zeros(1,n);
+    for i = 1:n
+        factor = w(:,i)./sum(w(:,i)); 
+        p = factor - (1/N);
+        CV = (sum(power(p,2))*N);
+        n_eff(1,i) = N./(1+CV);
+    end
+end
+
